@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Educativo - Desarrollo Tecnológico e Innovación</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .game-container {
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #333;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+        
+        .score {
+            margin: 10px 0;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .controls {
+            margin: 10px 0;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .question {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .options {
+            margin: 20px 0;
+        }
+        
+        .option {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+            text-align: left;
+        }
+        
+        .option:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+        }
+        
+        .option.correct {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        
+        .option.incorrect {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        
+        .feedback {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        
+        .feedback.correct {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .feedback.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .continue-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        
+        .continue-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .game-over {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .restart-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 15px;
+        }
+        
+        .restart-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🐍 Snake Educativo</h1>
+        <p class="subtitle">Desarrollo Tecnológico e Innovación - Unidad 3</p>
+        <div class="score">Puntuación: <span id="score">0</span></div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="controls">Usa las flechas del teclado para moverte</div>
+    </div>
+
+    <!-- Modal para preguntas -->
+    <div id="questionModal" class="modal">
+        <div class="modal-content">
+            <div id="questionText" class="question"></div>
+            <div id="optionsContainer" class="options"></div>
+            <div id="feedback" class="feedback" style="display: none;"></div>
+            <button id="continueBtn" class="continue-btn" style="display: none;">Continuar Jugando</button>
+        </div>
+    </div>
+
+    <!-- Modal para Game Over -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <div class="game-over">
+                <h2>¡Juego Terminado!</h2>
+                <p>Puntuación final: <span id="finalScore">0</span></p>
+                <p>Preguntas respondidas: <span id="questionsAnswered">0</span></p>
+                <button id="restartBtn" class="restart-btn">Jugar de Nuevo</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración del juego
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+        
+        let snake = [
+            {x: 10, y: 10}
+        ];
+        let food = {};
+        let dx = 0;
+        let dy = 0;
+        let score = 0;
+        let questionsAnswered = 0;
+        let gameRunning = true;
+        let currentQuestionIndex = 0;
+        
+        // Preguntas basadas en la Unidad 3
+        const questions = [
+            {
+                question: "¿Qué se entiende por innovación según el documento?",
+                options: [
+                    "A) Solo la creación de nuevos productos tecnológicos",
+                    "B) La capacidad de generar e incorporar conocimientos para dar respuestas creativas a los problemas del presente",
+                    "C) Únicamente los avances en computación",
+                    "D) La automatización de procesos industriales"
+                ],
+                correct: 1,
+                explanation: "La innovación es la capacidad de generar e incorporar conocimientos para dar respuestas creativas a los problemas del presente, siendo clave para mejorar la competitividad."
+            },
+            {
+                question: "¿En qué década se conoció la época de 'distritos industriales y sistemas productivos locales'?",
+                options: [
+                    "A) Años 60",
+                    "B) Años 70",
+                    "C) Años 80",
+                    "D) Años 90"
+                ],
+                correct: 1,
+                explanation: "En los años 70 se desarrollaron los distritos industriales y sistemas productivos locales, enfocándose en la organización interna de las empresas."
+            },
+            {
+                question: "¿Qué caracterizó la época de los años 80 en términos de innovación?",
+                options: [
+                    "A) El uso masivo de internet",
+                    "B) El determinismo ambiental y la ubicación geográfica",
+                    "C) La automatización total",
+                    "D) Las redes sociales"
+                ],
+                correct: 1,
+                explanation: "Los años 80 se caracterizaron por el determinismo ambiental, donde las empresas exitosas se ubicaron en espacios geográficos determinados, como Silicon Valley."
+            },
+            {
+                question: "¿Cuál es un ejemplo destacado de organización empresarial mencionado en el documento?",
+                options: [
+                    "A) Wall Street",
+                    "B) Silicon Valley",
+                    "C) Times Square",
+                    "D) Hollywood"
+                ],
+                correct: 1,
+                explanation: "Silicon Valley es mencionado como ejemplo de organización empresarial exitosa, donde se centralizaron empresas alrededor de San Francisco."
+            },
+            {
+                question: "¿Qué impulsó el desarrollo en los años 90?",
+                options: [
+                    "A) La energía nuclear",
+                    "B) Las tecnologías de la información y comunicación",
+                    "C) La biotecnología únicamente",
+                    "D) Los viajes espaciales"
+                ],
+                correct: 1,
+                explanation: "En los años 90, las tecnologías de la información y comunicación impulsaron las ventajas competitivas y las redes de innovación."
+            },
+            {
+                question: "¿Desde qué año se habla de 'dinámicas de proximidad y economías del conocimiento'?",
+                options: [
+                    "A) 1995",
+                    "B) 1998",
+                    "C) 2000",
+                    "D) 2005"
+                ],
+                correct: 2,
+                explanation: "Desde el año 2000 hasta nuestros días se desarrollan las dinámicas de proximidad, economías del conocimiento y sistemas de innovación."
+            },
+            {
+                question: "¿Qué organización lanzó las 'Políticas CTI' en América Latina?",
+                options: [
+                    "A) ONU",
+                    "B) BID (Banco Interamericano de Desarrollo)",
+                    "C) UNESCO",
+                    "D) OEA"
+                ],
+                correct: 1,
+                explanation: "El BID (Banco Interamericano de Desarrollo) lanzó la propuesta 'Políticas CTI' junto con delegaciones de diferentes países."
+            },
+            {
+                question: "¿Hasta qué año se extiende la política de CTI de Colombia establecida en 2015?",
+                options: [
+                    "A) 2020",
+                    "B) 2025",
+                    "C) 2030",
+                    "D) 2035"
+                ],
+                correct: 1,
+                explanation: "En 2015 se fundamentó la política de Ciencia, Tecnología e Innovación de Colombia que va hasta 2025."
+            },
+            {
+                question: "¿Cuál es la gran visión de Colombia según Colciencias?",
+                options: [
+                    "A) Ser el país más poblado de América Latina",
+                    "B) Ser uno de los países más innovadores de América Latina en 2025",
+                    "C) Tener la economía más grande de la región",
+                    "D) Ser líder en exportaciones"
+                ],
+                correct: 1,
+                explanation: "La gran visión es que Colombia sea uno de los países más innovadores de América Latina en el 2025."
+            },
+            {
+                question: "¿Cuántas áreas de trabajo principales tiene la política CTI de Colombia?",
+                options: [
+                    "A) 3",
+                    "B) 4",
+                    "C) 5",
+                    "D) 6"
+                ],
+                correct: 1,
+                explanation: "La política CTI de Colombia se centra en 4 áreas: Educación para la Investigación, Investigación, Innovación y Mentalidad-Cultura Científica."
+            },
+            {
+                question: "¿Desde qué año existe el programa de 'Educación para la Investigación' en Colombia?",
+                options: [
+                    "A) 1990",
+                    "B) 1992",
+                    "C) 1995",
+                    "D) 2000"
+                ],
+                correct: 1,
+                explanation: "El programa de Educación para la Investigación existe desde 1992, buscando apoyar la formación de investigadores colombianos."
+            },
+            {
+                question: "¿Qué porcentaje de financiación es condonable para estudios de doctorado?",
+                options: [
+                    "A) 50%",
+                    "B) 75%",
+                    "C) 100%",
+                    "D) 25%"
+                ],
+                correct: 2,
+                explanation: "Para estudios de doctorado, la financiación se otorga como crédito educativo 100% condonable por máximo cuatro años."
+            },
+            {
+                question: "¿Cuál es la diferencia entre grandes y pequeñas empresas en innovación según el documento?",
+                options: [
+                    "A) No hay diferencias significativas",
+                    "B) Las grandes tienen mayor capacidad interna, las pequeñas dependen más de redes externas",
+                    "C) Las pequeñas son siempre más innovadoras",
+                    "D) Solo las grandes pueden innovar"
+                ],
+                correct: 1,
+                explanation: "Las grandes empresas tienen mayor capacidad para generar innovaciones internamente, mientras las pequeñas dependen más de redes de relaciones externas."
+            },
+            {
+                question: "¿Qué define a un 'territorio innovador'?",
+                options: [
+                    "A) Solo tener universidades",
+                    "B) La presencia de un sistema productivo donde las empresas realizan esfuerzos en innovación tecnológica",
+                    "C) Tener muchas fábricas",
+                    "D) Estar cerca de la capital"
+                ],
+                correct: 1,
+                explanation: "Un territorio innovador se define por tener un sistema productivo donde las empresas realizan esfuerzos constantes en innovación tecnológica."
+            },
+            {
+                question: "¿Cuál es una característica de América Latina mencionada en el documento?",
+                options: [
+                    "A) Homogeneidad económica",
+                    "B) Reunir en un mismo territorio la riqueza y pobreza",
+                    "C) Alta inversión en ciencia y tecnología",
+                    "D) Infraestructura tecnológica avanzada"
+                ],
+                correct: 1,
+                explanation: "América Latina se caracteriza por reunir en un mismo territorio la riqueza y pobreza, la opulencia con el hambre."
+            },
+            {
+                question: "¿Qué países se mencionan como ejemplos de experiencias exitosas en la región?",
+                options: [
+                    "A) Chile y Perú",
+                    "B) Argentina, Brasil y México",
+                    "C) Colombia y Venezuela",
+                    "D) Ecuador y Bolivia"
+                ],
+                correct: 1,
+                explanation: "Se mencionan Argentina y Brasil por exportaciones agropecuarias, y México por la industria informática como experiencias exitosas."
+            },
+            {
+                question: "¿Cuál es el enfoque principal de las 'Brigadas y Fondos Nacionales de Patentes'?",
+                options: [
+                    "A) Crear nuevas universidades",
+                    "B) Identificar proyectos con potencial de protección mediante patente",
+                    "C) Financiar infraestructura",
+                    "D) Capacitar personal"
+                ],
+                correct: 1,
+                explanation: "Las Brigadas y Fondos Nacionales de Patentes se enfocan en identificar proyectos con potencial de protección mediante patente."
+            },
+            {
+                question: "¿Qué busca la estrategia de 'Mentalidad y Cultura Científica'?",
+                options: [
+                    "A) Construir más laboratorios",
+                    "B) Construir una cultura que valore y gestione el conocimiento y la innovación",
+                    "C) Aumentar el número de científicos",
+                    "D) Crear más empresas"
+                ],
+                correct: 1,
+                explanation: "Esta estrategia busca construir una cultura que valore y gestione el conocimiento y la innovación como fuente de desarrollo."
+            },
+            {
+                question: "¿Cuántos Programas Nacionales de CTel se mencionan en el documento?",
+                options: [
+                    "A) 10",
+                    "B) 12",
+                    "C) 15",
+                    "D) 8"
+                ],
+                correct: 1,
+                explanation: "Se mencionan 12 Programas Nacionales: Geociencias, Salud, Medio ambiente, Agro, Ciencias básicas, Mar, Ciencias humanas, Energía, Ingeniería, Seguridad, TIC y Biotecnología."
+            },
+            {
+                question: "¿Qué representa la innovación para las empresas según el documento?",
+                options: [
+                    "A) Un gasto innecesario",
+                    "B) La base de la productividad para crear productos de alta calidad comparables mundialmente",
+                    "C) Solo una moda pasajera",
+                    "D) Un requisito legal"
+                ],
+                correct: 1,
+                explanation: "La innovación pasa a ser la base de la productividad de las empresas al hacer emerger productos de alta calidad comparables a nivel mundial."
+            }
+        ];
+        
+        // Generar posición aleatoria para la comida
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+            
+            // Asegurar que la comida no aparezca sobre la serpiente
+            for (let segment of snake) {
+                if (segment.x === food.x && segment.y === food.y) {
+                    generateFood();
+                    return;
+                }
+            }
+        }
+        
+        // Dibujar el juego
+        function drawGame() {
+            // Limpiar canvas
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar serpiente
+            ctx.fillStyle = '#4CAF50';
+            for (let segment of snake) {
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+            }
+            
+            // Dibujar cabeza de la serpiente
+            ctx.fillStyle = '#2E7D32';
+            ctx.fillRect(snake[0].x * gridSize, snake[0].y * gridSize, gridSize - 2, gridSize - 2);
+            
+            // Dibujar comida
+            ctx.fillStyle = '#FF5722';
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+        }
+        
+        // Mover serpiente
+        function moveSnake() {
+            if (!gameRunning) return;
+            
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+            
+            // Verificar colisiones con paredes
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                gameOver();
+                return;
+            }
+            
+            // Verificar colisiones con el cuerpo
+            for (let segment of snake) {
+                if (head.x === segment.x && head.y === segment.y) {
+                    gameOver();
+                    return;
+                }
+            }
+            
+            snake.unshift(head);
+            
+            // Verificar si comió la comida
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                scoreElement.textContent = score;
+                generateFood();
+                showQuestion();
+            } else {
+                snake.pop();
+            }
+        }
+        
+        // Mostrar pregunta
+        function showQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                currentQuestionIndex = 0; // Reiniciar preguntas
+            }
+            
+            gameRunning = false;
+            const question = questions[currentQuestionIndex];
+            
+            document.getElementById('questionText').textContent = question.question;
+            
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'option';
+                button.textContent = option;
+                button.onclick = () => selectAnswer(index, question.correct, question.explanation);
+                optionsContainer.appendChild(button);
+            });
+            
+            document.getElementById('questionModal').style.display = 'block';
+        }
+        
+        // Seleccionar respuesta
+        function selectAnswer(selectedIndex, correctIndex, explanation) {
+            const options = document.querySelectorAll('.option');
+            const feedback = document.getElementById('feedback');
+            
+            options.forEach((option, index) => {
+                option.onclick = null; // Deshabilitar clicks
+                if (index === correctIndex) {
+                    option.classList.add('correct');
+                } else if (index === selectedIndex && index !== correctIndex) {
+                    option.classList.add('incorrect');
+                }
+            });
+            
+            if (selectedIndex === correctIndex) {
+                feedback.textContent = '¡Correcto! ' + explanation;
+                feedback.className = 'feedback correct';
+                score += 20; // Bonus por respuesta correcta
+                scoreElement.textContent = score;
+            } else {
+                feedback.textContent = 'Incorrecto. ' + explanation;
+                feedback.className = 'feedback incorrect';
+            }
+            
+            questionsAnswered++;
+            currentQuestionIndex++;
+            
+            feedback.style.display = 'block';
+            document.getElementById('continueBtn').style.display = 'block';
+        }
+        
+        // Continuar juego
+        document.getElementById('continueBtn').onclick = function() {
+            document.getElementById('questionModal').style.display = 'none';
+            document.getElementById('feedback').style.display = 'none';
+            document.getElementById('continueBtn').style.display = 'none';
+            gameRunning = true;
+        };
+        
+        // Game Over
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('questionsAnswered').textContent = questionsAnswered;
+            document.getElementById('gameOverModal').style.display = 'block';
+        }
+        
+        // Reiniciar juego
+        document.getElementById('restartBtn').onclick = function() {
+            snake = [{x: 10, y: 10}];
+            dx = 0;
+            dy = 0;
+            score = 0;
+            questionsAnswered = 0;
+            currentQuestionIndex = 0;
+            gameRunning = true;
+            scoreElement.textContent = score;
+            generateFood();
+            document.getElementById('gameOverModal').style.display = 'none';
+        };
+        
+        // Controles del teclado
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            const LEFT_KEY = 37;
+            const RIGHT_KEY = 39;
+            const UP_KEY = 38;
+            const DOWN_KEY = 40;
+            
+            const keyPressed = e.keyCode;
+            const goingUp = dy === -1;
+            const goingDown = dy === 1;
+            const goingRight = dx === 1;
+            const goingLeft = dx === -1;
+            
+            if (keyPressed === LEFT_KEY && !goingRight) {
+                dx = -1;
+                dy = 0;
+            }
+            if (keyPressed === UP_KEY && !goingDown) {
+                dx = 0;
+                dy = -1;
+            }
+            if (keyPressed === RIGHT_KEY && !goingLeft) {
+                dx = 1;
+                dy = 0;
+            }
+            if (keyPressed === DOWN_KEY && !goingUp) {
+                dx = 0;
+                dy = 1;
+            }
+        });
+        
+        // Inicializar juego
+        generateFood();
+        
+        // Loop principal del juego
+        function gameLoop() {
+            moveSnake();
+            drawGame();
+        }
+        
+        setInterval(gameLoop, 150);
+    </script>
+</body>
+</html>
